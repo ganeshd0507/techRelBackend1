@@ -1,0 +1,32 @@
+# Build stage
+FROM maven:3.9.4-eclipse-temurin-17 AS builder
+
+# Set working directory in the build stage
+WORKDIR /app
+
+# Copy only the files required for dependency resolution first
+COPY pom.xml . 
+
+# Download Maven dependencies (cached for future builds)
+RUN mvn dependency:go-offline -B
+
+# Copy the rest of the application source code
+COPY src ./src
+
+# Build the application, skipping tests to speed up the process
+RUN mvn clean package -DskipTests
+
+# Runtime stage
+FROM openjdk:17-jdk-slim
+
+# Set working directory in the runtime stage
+WORKDIR /app
+
+# Copy the built JAR file from the builder stage
+COPY --from=builder /app/target/*.jar techrelbackend.jar
+
+# Expose the application port
+EXPOSE 8181
+
+# Command to run the application
+ENTRYPOINT ["java", "-jar", "techrelbackend.jar"]
